@@ -1,0 +1,14 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore log files
+*.log
+
+# Ignore custom service lists (if you want)
+service_whitelist.txt
+my_services.txt
+
+# Ignore system files
+.DS_Store
+Thumbs.db
