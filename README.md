@@ -83,6 +83,12 @@ cp example_service_whitelist.txt service_whitelist.txt
 
 2. Edit `service_whitelist.txt` and add the names of the services you want to re-broadcast (one per line).
 
+   You must use the exact "Instance Name" of the service you see when running `dns-sd -B` (service_type is required after `-B`, e.g. for HomeKit Bridges you should run `dns-sd -B _hap._tcp`) otherwise the services will not be resolved.
+
+   If you can't see your service when running `dns-sd -B ...` then it means your host OS cannot see the mDNS service and this script cannot help you. Fix the first part and then come back to the script. (For HomeAssitant, using `network_mode: host` in the compose.yaml file seems to do the trick to expose the services to your host)
+
+3. Run the script.
+
 ---
 
 ## Whitelist File Format
