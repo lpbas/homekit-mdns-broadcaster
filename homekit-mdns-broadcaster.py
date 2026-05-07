@@ -8,6 +8,7 @@ import sys
 import logging
 import argparse
 import os
+import threading
 
 # Constants
 SERVICE_TYPE="_hap._tcp"
@@ -165,7 +166,13 @@ def main():
 
     logging.info(f"{successful_count} services registered.")
     print(f"{successful_count} services registered. Press Ctrl+C to stop.")
-    signal.pause()
+
+    # Block until the process is killed by a signal.
+    # threading.Event().wait() is used instead of signal.pause() because
+    # signal.pause() on macOS returns when *any* signal arrives (EINTR),
+    # which caused the script to re-enter the registration loop and spawn
+    # duplicate dns-sd -R child processes.
+    threading.Event().wait()
 
 if __name__ == "__main__":
     main()
