@@ -42,12 +42,35 @@ python3 mdns_broadcaster.py [OPTIONS]
 
 ### Options
 
-| Argument             | Description                              |
-| -------------------- | ---------------------------------------- |
-| `--delay`             | Delay script start by 90 seconds        |
-| `--whitelist <path>`  | Path to a custom service whitelist file |
-| `--log <path>`        | Path to a custom log file               |
-| `--verbose`           | Enable live console logging             |
+| Argument                  | Description                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `--delay`                 | Delay script start by 60 seconds                                                   |
+| `--whitelist <path>`      | Path to a custom service whitelist file                                            |
+| `--log <path>`            | Path to a custom log file                                                          |
+| `--groups <g1,g2>`        | Service groups / types to scan (see below). Defaults to `homekit`. Repeatable.     |
+| `--service-type <_type>`  | Explicit mDNS service type(s) to scan, e.g. `_http._tcp`. Repeatable.              |
+| `--verbose`               | Enable live console logging                                                         |
+
+### Choosing what to scan
+
+For each whitelisted name the script tries a list of mDNS service types in order and re-broadcasts under the first one that resolves.
+
+- **By default only the `homekit` group is scanned** (`_hap._tcp`, `_homekit._tcp`, and the Matter types). This is the fast path for the tool's main job — re-broadcasting HomeKit bridges — and keeps a run quick.
+- `--groups` takes a comma-separated, repeatable list. Each token is a **group name** (expanded to its types), the special token **`all`** (every group), or a **literal service type** starting with `_`. Available groups: `homekit`, `enumeration`, `web`, `files`, `printing`, `apple`, `google`, `iot`, `media`, `dev`, `p2p`.
+- `--service-type` adds explicit service type(s) and combines with any `--groups` selection.
+
+> ⚠️ `--groups all` scans ~70 service types. Because `dns-sd -L` only stops when it hits the resolve timeout, every type that doesn't resolve costs ~2s per whitelisted service, so a broad scan can be slow. Stick to the default or a narrow group list unless you specifically need the wide net.
+
+```bash
+# Default: HomeKit only (fast)
+python3 mdns_broadcaster.py --verbose
+
+# Scan a couple of groups plus one extra service type
+python3 mdns_broadcaster.py --groups web,iot --service-type _custom._tcp
+
+# Scan everything (slow)
+python3 mdns_broadcaster.py --groups all
+```
 
 ### Example Commands
 

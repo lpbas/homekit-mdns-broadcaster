@@ -11,11 +11,23 @@ import os
 import threading
 
 # Constants
-# Service types grouped by category. By default every group is scanned (except
-# the ones in NON_DEFAULT_GROUPS); --groups / --service-type narrow it.
+# Service types grouped by category. By default only the "homekit" group is
+# scanned — that's the tool's main job and keeps a run fast. Pass --groups /
+# --service-type to scan others, or --groups all to scan every group (except
+# the ones in NON_DEFAULT_GROUPS). The homekit group is kept first so the
+# common case short-circuits early even during a full scan.
 SERVICE_GROUPS = {
+    # HomeKit/Matter — the tool's primary target and the default scan. Kept
+    # first so _hap._tcp is tried before everything else, including --groups all.
+    "homekit": [
+        "_hap._tcp",
+        "_homekit._tcp",
+        "_matterc._udp",
+        "_matter._tcp",
+        "_matterd._udp",
+    ],
     # Meta-query used to enumerate advertised service types. Not a resolvable
-    # instance type, so it's excluded from the default scan, but it can still be
+    # instance type, so it's excluded from --groups all, but it can still be
     # selected explicitly with --groups enumeration.
     "enumeration": [
         "_services._dns-sd._udp",
@@ -64,13 +76,6 @@ SERVICE_GROUPS = {
         "_ica-networking._tcp",
         "_ichat._tcp",
     ],
-    "homekit": [
-        "_hap._tcp",
-        "_homekit._tcp",
-        "_matterc._udp",
-        "_matter._tcp",
-        "_matterd._udp",
-    ],
     "google": [
         "_googlecast._tcp",
         "_googlezone._tcp",
@@ -111,7 +116,7 @@ SERVICE_GROUPS = {
     ],
 }
 
-# Groups left out of the default "scan everything" set (still selectable by name).
+# Groups left out of the "--groups all" set (still selectable by name).
 NON_DEFAULT_GROUPS = {"enumeration"}
 
 # Timeouts
@@ -139,10 +144,11 @@ parser.add_argument(
     action="append",
     metavar="g1,g2",
     help="Comma-separated groups and/or service types to scan. Each token is a\n"
-         "group name (expanded to its types) or a literal service type\n"
-         "(anything starting with '_'). Repeatable.\n"
+         "group name (expanded to its types), the special token 'all' (every\n"
+         "group except 'enumeration'), or a literal service type (anything\n"
+         "starting with '_'). Repeatable.\n"
          "Available groups: " + ", ".join(SERVICE_GROUPS) + ".\n"
-         "If omitted, all groups are scanned (except 'enumeration').",
+         "If omitted, only the 'homekit' group is scanned.",
 )
 parser.add_argument(
     "--service-type",
@@ -164,14 +170,22 @@ def _split_csv(values):
 
 
 # Resolve --groups / --service-type into the ordered list of service types to
-# scan. A --groups token is either a group name (expanded) or a literal service
-# type. Both flags combine; if neither is given, scan all default groups. For
+# scan. A --groups token is either a group name (expanded), the special token
+# 'all' (every group except NON_DEFAULT_GROUPS), or a literal service type.
+# Both flags combine; if neither is given, default to the homekit group. For
 # each whitelisted name the script tries each type in order and registers under
 # whichever one resolves first.
 selected = []
 unknown_groups = []
 for token in _split_csv(args.groups):
-    if token in SERVICE_GROUPS:
+    if token == "all":
+        selected.extend(
+            service_type
+            for group, types in SERVICE_GROUPS.items()
+            if group not in NON_DEFAULT_GROUPS
+            for service_type in types
+        )
+    elif token in SERVICE_GROUPS:
         selected.extend(SERVICE_GROUPS[token])
     elif token.startswith("_"):
         selected.append(token)  # literal service type
@@ -189,12 +203,9 @@ if unknown_groups:
 if selected:
     SERVICE_TYPES = list(dict.fromkeys(selected))
 else:
-    SERVICE_TYPES = list(dict.fromkeys(
-        service_type
-        for group, types in SERVICE_GROUPS.items()
-        if group not in NON_DEFAULT_GROUPS
-        for service_type in types
-    ))
+    # Default to the homekit group: fast (HomeKit resolves on the first type
+    # tried) and backwards compatible. Use --groups all for the wide scan.
+    SERVICE_TYPES = list(dict.fromkeys(SERVICE_GROUPS["homekit"]))
 
 if args.delay:
     print(f"Delaying script execution for {DELAY} seconds...")
