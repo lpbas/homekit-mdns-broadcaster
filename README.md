@@ -1,3 +1,7 @@
+## Beacon
+
+Based on this script, Beacon (not Bacon) was created! It's a native MacOS app with a GUI that lets you do what this script does in a user friendlier package. You can check it out [here](https://github.com/lpbas/Beacon), or keep reading below if you want to use the script.
+
 # mDNS Broadcaster
 
 ![Python Version](https://img.shields.io/badge/python-3.x-blue)
